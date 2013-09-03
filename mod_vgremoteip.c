@@ -241,12 +241,13 @@ int isVGProxy(vgremoteip_config_t *config, apr_sockaddr_t *ip) {
 static int vgremoteip_modify_connection(request_rec *r) {
 	conn_rec *c = r->connection;
 	vgremoteip_config_t *config;
-    vgremoteip_proxy_save_rec_t *proxy_saved;
-    apr_sockaddr_t *clientaddr = NULL, *tempaddr = NULL;
+  vgremoteip_proxy_save_rec_t *proxy_saved;
+  apr_sockaddr_t *clientaddr = NULL, *tempaddr = NULL;
 	apr_array_header_t *ipList;
+	
 	int i;
 	const char *remote;
-	char *curVal = NULL, *clientip = NULL;
+	char *curVal = NULL, *clientip = NULL, *myRemote;
 
 	config = ap_get_module_config(r->server->module_config, &vgremoteip_module);
 	remote = (char *) apr_table_get(r->headers_in, config->header_name);
@@ -263,10 +264,22 @@ static int vgremoteip_modify_connection(request_rec *r) {
 		return OK;
 	}
 
-    /* Just a security measure. */
-    if (strlen(remote) > 256) {
-        return OK;
-    }
+/* Add clientip to the X-Forwarded-For header. */
+  myRemote = malloc((strlen(remote) + strlen(clientip)) + 1);
+	
+	if (myRemote != NULL) {
+		if (clientip) {
+			sprintf(myRemote, "%s, %s", remote, clientip);
+			apr_table_setn(r->headers_in, config->header_name, apr_pstrdup(r->pool, myRemote));
+		}
+
+		free(myRemote);
+	}
+
+  /* Just a security measure. */
+  if (strlen(remote) > 256) {
+  	return OK;
+  }
 	
 	remote = apr_pstrdup(r->pool, remote);
 	ipList = apr_array_make(r->pool, 1, sizeof(char*));
@@ -287,7 +300,7 @@ static int vgremoteip_modify_connection(request_rec *r) {
     if (apr_sockaddr_info_get(&clientaddr, ((char**)ipList->elts)[0], APR_UNSPEC, 0, APR_IPV4_ADDR_OK, r->pool) != APR_SUCCESS) 
 			return OK;
 	} else { /* More than one ip in the list. */
-		for (i = ipList->nelts-1; i >= 0; i--) {
+		for (i = 0; i <= ipList->nelts-1; i++) {
 			if (apr_sockaddr_info_get(&tempaddr, ((char**)ipList->elts)[i], APR_UNSPEC, 0, APR_IPV4_ADDR_OK, r->pool) != APR_SUCCESS) 
 				continue;
 
