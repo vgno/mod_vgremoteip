@@ -265,15 +265,13 @@ static int vgremoteip_modify_connection(request_rec *r) {
 	}
 
 /* Add clientip to the X-Forwarded-For header. */
-  myRemote = malloc((strlen(remote) + strlen(clientip)) + 1);
+  myRemote = apr_palloc(r->pool, (strlen(remote) + strlen(clientip)) + 3);
 	
 	if (myRemote != NULL) {
 		if (clientip) {
 			sprintf(myRemote, "%s, %s", remote, clientip);
-			apr_table_setn(r->headers_in, config->header_name, apr_pstrdup(r->pool, myRemote));
+			apr_table_setn(r->headers_in, config->header_name, myRemote);
 		}
-
-		free(myRemote);
 	}
 
   /* Just a security measure. */
