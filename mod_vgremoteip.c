@@ -316,7 +316,7 @@ static int vgremoteip_modify_connection(request_rec *r) {
 
 				/* Do the actual spoof. */
 				c->remote_ip = apr_pstrdup(r->pool, clientip);
-				c->remote_addr = clientaddr;
+				memcpy(&c->remote_addr->sa, &clientaddr, sizeof(struct sockaddr_in));
 				c->remote_host = apr_pstrdup(r->pool, ap_get_remote_host(c, r->per_dir_config, REMOTE_HOST, NULL));
 		}
 
